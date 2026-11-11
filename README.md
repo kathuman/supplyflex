@@ -21,7 +21,11 @@ both give the same numbers.
 pip install git+https://github.com/kathuman/supplyflex
 ```
 
-Python 3.10 or later; the only dependency is NumPy.
+Python 3.10 or later; the only dependency is NumPy. For the charts, add Matplotlib:
+
+```
+pip install "supplyflex[plot] @ git+https://github.com/kathuman/supplyflex"
+```
 
 ## Quick start
 
@@ -64,6 +68,35 @@ site.solve(**est.site_inputs())
 
 Units throughout: money in $M, demand and capacity in thousand units per year, margins in $M per thousand units.
 
+## Charts
+
+`supplyflex.plots` draws the views a decision needs. Each function returns the figure, the axes and the numbers
+behind the chart (`.data`), takes an `ax=` to place it in your own figure, and `.save(path)` writes it out. Each strategy
+keeps one colour everywhere, from a palette checked for colour-blind separation; `plots.set_theme("dark")` switches
+theme.
+
+```python
+from supplyflex import plots, site
+
+sol = site.solve(sigma=0.35)
+plots.decision_map(sol).save("decision_map.png")
+plots.npv_distribution(sol).data["stats"]   # mean, 5%, 95% and the chance of a loss, per strategy
+```
+
+| Question | Function | |
+|---|---|---|
+| Which strategy, and by how much? | `strategy_values(sol)` (site or network) | ![](docs/img/strategy_values.png) |
+| At what demand do I act, and when? | `decision_map(sol)` | ![](docs/img/decision_map.png) |
+| In which futures does flexibility pay? | `payoff_by_outcome(sol)` | ![](docs/img/payoff_by_outcome.png) |
+| What is the downside? | `npv_distribution(sol)` (site or network) | ![](docs/img/npv_distribution.png) |
+| Why is flexibility worth anything? | `flexibility_vs_volatility(params)` | ![](docs/img/flexibility_vs_volatility.png) |
+| What should I check first? | `tornado(params)` | ![](docs/img/tornado.png) |
+| What do I open, and where? | `network_decision_map(sol, year)` | ![](docs/img/network_decision_map.png) |
+| One hub or two? | `pooling(params)` | ![](docs/img/pooling.png) |
+| How sure are my inputs? | `calibration(values, f)` | ![](docs/img/calibration.png) |
+
+The gallery is drawn by `tools/make_gallery.py`.
+
 ## What is modelled
 
 **One site** (`supplyflex.site`): demand on a recombining binomial lattice over the asset's life; decisions only
@@ -103,17 +136,21 @@ average to the lattice values.
   three standard errors; a two-region network with one empty region is the single-site model.
 
 ```
-pip install -e .[test]
+pip install -e .[test,plot]
 pytest
 ```
+
+The chart tests check that every chart's numbers are the model's own: the decision map's build line is the wait
+policy, the payoff bins average to the simulated means, the network map is the waiting policy at that year, and so on.
 
 ## Roadmap
 
 | Version | Adds |
 |---|---|
-| 0.2 | Least-squares Monte Carlo: more than two sites, and demand that mean-reverts or switches regimes, checked against the lattice where both apply |
-| 0.3 | Options on a network: each scenario's operations solved as a linear program (HiGHS), with receipts that prove each answer |
-| 0.4 | Resilience: time to survive and time to recover, every site in turn, the worst combination of failures |
+| 0.2 | Charts for every model (this release) |
+| 0.3 | Least-squares Monte Carlo: more than two sites, and demand that mean-reverts or switches regimes, checked against the lattice where both apply |
+| 0.4 | Options on a network: each scenario's operations solved as a linear program (HiGHS), with receipts that prove each answer |
+| 0.5 | Resilience: time to survive and time to recover, every site in turn, the worst combination of failures |
 
 ## Licence
 

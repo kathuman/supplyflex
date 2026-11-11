@@ -5,6 +5,7 @@ Modules:
 * :mod:`supplyflex.site`      — one site: commit, wait, stage, lease; sell, mothball and contract
 * :mod:`supplyflex.network`   — two regions with correlated demand: one hub or two, now or later
 * :mod:`supplyflex.calibrate` — volatility and growth from a demand history, with their uncertainty
+* :mod:`supplyflex.plots`     — charts for all of the above (needs Matplotlib: ``pip install supplyflex[plot]``)
 
 Quick start::
 
@@ -16,5 +17,5 @@ Quick start::
 """
 from . import calibrate, network, site
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 __all__ = ["site", "network", "calibrate", "__version__"]

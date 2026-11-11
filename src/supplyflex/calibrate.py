@@ -149,6 +149,7 @@ class Estimate:
     seasonal: bool
     factors: Optional[List[float]]
     warnings: List[str]
+    logs: Optional[List[float]] = None   # log demand used for the estimate (de-seasoned when the season was removed)
 
     def site_inputs(self) -> dict:
         """The estimates as inputs to :class:`supplyflex.site.SiteParams`."""
@@ -207,7 +208,7 @@ def estimate(values: Iterable[float], f: int, deseason: bool = False, units: str
     d0 = (recent if units == "year" else recent * f) / (scale or 1)
     return Estimate(n=n, f=f, years=T, sigma=sigma, mu=mu, growth=g, se_sigma=se_sigma, se_mu=se_mu, se_growth=se_g,
                     ci_sigma=(max(0.0, sigma - Z90 * se_sigma), sigma + Z90 * se_sigma), ci_growth=(g - Z90 * se_g, g + Z90 * se_g),
-                    d0=d0, rho1=rho1, seasonal=seasonal, factors=factors, warnings=warnings)
+                    d0=d0, rho1=rho1, seasonal=seasonal, factors=factors, warnings=warnings, logs=list(logs))
 
 
 def synthetic(f: int, years: float, start: float, growth: float, sigma: float, season: float = 0.0, seed: int = 1) -> List[float]:
