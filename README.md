@@ -71,12 +71,12 @@ Inputs are checked when they are set: anything out of range raises one `ValueErr
 
 ## Documentation
 
-- [Worked example](docs/worked-example.md): a regional distribution centre, from five years of monthly shipments to a
+- [Worked example](https://github.com/kathuman/supplyflex/blob/main/docs/worked-example.md): a regional distribution centre, from five years of monthly shipments to a
   recommendation, a decision rule to monitor and the inputs it depends on
-  ([script](examples/regional_dc.py)).
-- [User guide](docs/guide.md): a workflow, how to read every result (option values do not add up, and why `wait` can
+  ([script](https://github.com/kathuman/supplyflex/blob/main/examples/regional_dc.py)).
+- [User guide](https://github.com/kathuman/supplyflex/blob/main/docs/guide.md): a workflow, how to read every result (option values do not add up, and why `wait` can
   be negative), choosing inputs, the valuation basis, assumptions and limitations, and references.
-- [Parameter reference](docs/parameters.md): every input with its default, units, valid range and where to get a value.
+- [Parameter reference](https://github.com/kathuman/supplyflex/blob/main/docs/parameters.md): every input with its default, units, valid range and where to get a value.
 
 ## Charts
 
@@ -95,15 +95,15 @@ plots.npv_distribution(sol).data["stats"]   # mean, 5%, 95% and the chance of a 
 
 | Question | Function | |
 |---|---|---|
-| Which strategy, and by how much? | `strategy_values(sol)` (site or network) | ![](docs/img/strategy_values.png) |
-| At what demand do I act, and when? | `decision_map(sol)` | ![](docs/img/decision_map.png) |
-| In which futures does flexibility pay? | `payoff_by_outcome(sol)` | ![](docs/img/payoff_by_outcome.png) |
-| What is the downside? | `npv_distribution(sol)` (site or network) | ![](docs/img/npv_distribution.png) |
-| Why is flexibility worth anything? | `flexibility_vs_volatility(params)` | ![](docs/img/flexibility_vs_volatility.png) |
-| What should I check first? | `tornado(params)` | ![](docs/img/tornado.png) |
-| What do I open, and where? | `network_decision_map(sol, year)` | ![](docs/img/network_decision_map.png) |
-| One hub or two? | `pooling(params)` | ![](docs/img/pooling.png) |
-| How sure are my inputs? | `calibration(values, f)` | ![](docs/img/calibration.png) |
+| Which strategy, and by how much? | `strategy_values(sol)` (site or network) | ![](https://raw.githubusercontent.com/kathuman/supplyflex/main/docs/img/strategy_values.png) |
+| At what demand do I act, and when? | `decision_map(sol)` | ![](https://raw.githubusercontent.com/kathuman/supplyflex/main/docs/img/decision_map.png) |
+| In which futures does flexibility pay? | `payoff_by_outcome(sol)` | ![](https://raw.githubusercontent.com/kathuman/supplyflex/main/docs/img/payoff_by_outcome.png) |
+| What is the downside? | `npv_distribution(sol)` (site or network) | ![](https://raw.githubusercontent.com/kathuman/supplyflex/main/docs/img/npv_distribution.png) |
+| Why is flexibility worth anything? | `flexibility_vs_volatility(params)` | ![](https://raw.githubusercontent.com/kathuman/supplyflex/main/docs/img/flexibility_vs_volatility.png) |
+| What should I check first? | `tornado(params)` | ![](https://raw.githubusercontent.com/kathuman/supplyflex/main/docs/img/tornado.png) |
+| What do I open, and where? | `network_decision_map(sol, year)` | ![](https://raw.githubusercontent.com/kathuman/supplyflex/main/docs/img/network_decision_map.png) |
+| One hub or two? | `pooling(params)` | ![](https://raw.githubusercontent.com/kathuman/supplyflex/main/docs/img/pooling.png) |
+| How sure are my inputs? | `calibration(values, f)` | ![](https://raw.githubusercontent.com/kathuman/supplyflex/main/docs/img/calibration.png) |
 
 The gallery is drawn by `tools/make_gallery.py`.
 
