@@ -13,7 +13,7 @@ but none for real options on supply-chain capacity. `supplyflex` fills that gap.
 [Real Options for Network Design](https://kathuman.github.io/claude-projects/real-options/), and the tests check that
 both give the same numbers.
 
-> Status: 0.1, alpha. The API may still change before 1.0.
+> Status: 0.2, alpha. The API may still change before 1.0.
 
 ## Install
 
@@ -67,6 +67,16 @@ site.solve(**est.site_inputs())
 ```
 
 Units throughout: money in $M, demand and capacity in thousand units per year, margins in $M per thousand units.
+Inputs are checked when they are set: anything out of range raises one `ValueError` that lists every problem.
+
+## Documentation
+
+- [Worked example](docs/worked-example.md): a regional distribution centre, from five years of monthly shipments to a
+  recommendation, a decision rule to monitor and the inputs it depends on
+  ([script](examples/regional_dc.py)).
+- [User guide](docs/guide.md): a workflow, how to read every result (option values do not add up, and why `wait` can
+  be negative), choosing inputs, the valuation basis, assumptions and limitations, and references.
+- [Parameter reference](docs/parameters.md): every input with its default, units, valid range and where to get a value.
 
 ## Charts
 

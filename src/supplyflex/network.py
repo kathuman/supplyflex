@@ -23,12 +23,13 @@ Units: money in $M, demand and capacity in thousand units per year, margins in $
 from __future__ import annotations
 
 import math
+import numbers
 from dataclasses import dataclass, field, replace
 from typing import Dict, List, Optional
 
 import numpy as np
 
-from ._common import XorShift32, js_round
+from ._common import XorShift32, check_inputs, js_round
 
 
 @dataclass(frozen=True)
@@ -63,8 +64,49 @@ class NetworkParams:
     size_a: float = 1.2          # planned hub sizes, × each region's demand today
     size_b: float = 1.4
 
+    def __post_init__(self) -> None:
+        extra = []
+        if self.basis not in ("wacc", "rn"):
+            extra.append(f"basis = {self.basis!r} must be 'wacc' (expected cash flows at the WACC) or 'rn' (risk-neutral)")
+        if isinstance(self.life, numbers.Real) and isinstance(self.window, numbers.Real) and self.window > self.life:
+            extra.append(f"window = {self.window!r} cannot be longer than life = {self.life!r}")
+        if isinstance(self.life, numbers.Real) and isinstance(self.build_lead, numbers.Real) and self.build_lead >= self.life:
+            extra.append(f"build_lead = {self.build_lead!r} must be shorter than life = {self.life!r}")
+        check_inputs(self, _NET_RANGES, extra, "NetworkParams")
+
     def with_(self, **changes) -> "NetworkParams":
+        """A copy with some inputs changed."""
         return replace(self, **changes)
+
+
+_NET_RANGES = {
+    "demand_a": ("(0, inf)", "region A's demand today, thousand units per year"),
+    "demand_b": ("(0, inf)", "region B's demand today, thousand units per year; use a tiny value such as 1e-9 for an empty region"),
+    "sigma_a": ("(0, inf)", "volatility of region A's demand per year"),
+    "sigma_b": ("(0, inf)", "volatility of region B's demand per year"),
+    "growth_a": ("[-1, 1]", "expected growth of region A's demand per year"),
+    "growth_b": ("[-1, 1]", "expected growth of region B's demand per year"),
+    "rho": ("[-1, 1]", "correlation of the two regions' demand"),
+    "ceiling": ("[1, inf)", "market saturation as a multiple of today's demand"),
+    "life": ("(0, 100]", "asset life in years"),
+    "window": ("[0, inf)", "years during which hubs can be opened"),
+    "build_lead": ("[0, inf)", "years from deciding to build until a hub opens"),
+    "margin": ("[0, inf)", "$M per thousand units"),
+    "op_cost": ("[0, inf)", "$M per thousand units of capacity per year"),
+    "out_margin": ("[0, inf)", "3PL margin, $M per thousand units"),
+    "out_cap": ("[0, inf)", "3PL limit in each region as a multiple of its demand today"),
+    "penalty": ("[0, inf)", "$M per thousand units of lost sales"),
+    "cross_cost": ("[0, inf)", "transport cost to serve the other region, $M per thousand units"),
+    "wacc": ("[0, 1)", "discount rate per year, e.g. 0.10"),
+    "risk_free": ("(-1, 1)", "risk-free rate per year"),
+    "risk_price": ("(-inf, inf)", "market price of demand risk (lambda)"),
+    "fixed_cost": ("[0, inf)", "fixed cost of a hub, $M"),
+    "var_cost": ("[0, inf)", "$M per thousand units of capacity"),
+    "escalation": ("(-1, 1)", "yearly escalation of a deferred hub's cost"),
+    "learning": ("[0, 1]", "share of the fixed cost saved on the second hub"),
+    "size_a": ("(0, inf)", "planned hub size in region A as a multiple of its demand today"),
+    "size_b": ("(0, inf)", "planned hub size in region B as a multiple of its demand today"),
+}
 
 
 @dataclass

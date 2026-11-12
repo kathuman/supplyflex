@@ -7,6 +7,30 @@ a 32-bit xorshift generator, so a seed gives the same paths in both.
 from __future__ import annotations
 
 import math
+import numbers
+from typing import Dict, List, Tuple
+
+
+def check_inputs(obj, ranges: Dict[str, Tuple[str, str]], extra: List[str], what: str) -> None:
+    """Raise one ValueError that lists every input of ``obj`` outside its range, with what the input means.
+
+    ``ranges`` maps an input's name to (interval, meaning), the interval written as in mathematics: "(0, inf)",
+    "[0, 1]". ``extra`` holds problems the caller found itself (relations between inputs, choices among names).
+    """
+    problems = []
+    for name, (spec, meaning) in ranges.items():
+        v = getattr(obj, name)
+        if isinstance(v, bool) or not isinstance(v, numbers.Real) or not math.isfinite(v):
+            problems.append(f"{name} = {v!r} must be a finite number ({meaning})")
+            continue
+        lo, hi = (float(x) for x in spec[1:-1].split(","))
+        ok_lo = v > lo if spec[0] == "(" else v >= lo
+        ok_hi = v < hi if spec[-1] == ")" else v <= hi
+        if not (ok_lo and ok_hi):
+            problems.append(f"{name} = {v!r} must be in {spec} ({meaning})")
+    problems.extend(extra)
+    if problems:
+        raise ValueError(f"Invalid {what}:\n  - " + "\n  - ".join(problems))
 
 
 def js_round(x: float) -> int:

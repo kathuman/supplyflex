@@ -27,12 +27,13 @@ for the same inputs it gives the same values (the tests compare the two).
 from __future__ import annotations
 
 import math
+import numbers
 from dataclasses import asdict, dataclass, field, replace
 from typing import Dict, List, Optional
 
 import numpy as np
 
-from ._common import XorShift32, js_round
+from ._common import XorShift32, check_inputs, js_round
 
 SELL, MOTHBALL = 255, 254  # stage policy codes besides a target level
 _STEPS = (0.25, 1 / 12, 1 / 52)
@@ -88,9 +89,60 @@ class SiteParams:
     # numerics
     step_years: Optional[float] = None  # force a lattice step (used if valid), for convergence checks
 
+    def __post_init__(self) -> None:
+        extra = []
+        if self.basis not in ("wacc", "rn"):
+            extra.append(f"basis = {self.basis!r} must be 'wacc' (expected cash flows at the WACC) or 'rn' (risk-neutral)")
+        if isinstance(self.life, numbers.Real) and isinstance(self.window, numbers.Real) and self.window > self.life:
+            extra.append(f"window = {self.window!r} cannot be longer than life = {self.life!r}")
+        if isinstance(self.life, numbers.Real) and isinstance(self.build_lead, numbers.Real) and self.build_lead >= self.life:
+            extra.append(f"build_lead = {self.build_lead!r} must be shorter than life = {self.life!r}")
+        if isinstance(self.life, numbers.Real) and isinstance(self.lease_lead, numbers.Real) and self.lease_lead >= self.life:
+            extra.append(f"lease_lead = {self.lease_lead!r} must be shorter than life = {self.life!r}")
+        if self.step_years is not None and not (isinstance(self.step_years, numbers.Real) and 0 < self.step_years <= 1):
+            extra.append(f"step_years = {self.step_years!r} must be None or a step in (0, 1] years")
+        check_inputs(self, _SITE_RANGES, extra, "SiteParams")
+
     def with_(self, **changes) -> "SiteParams":
         """A copy with some inputs changed."""
         return replace(self, **changes)
+
+
+_SITE_RANGES = {
+    "d0": ("(0, inf)", "demand today, thousand units per year"),
+    "sigma": ("(0, inf)", "volatility of demand per year; for a near-certain forecast use a small value such as 0.01"),
+    "growth": ("[-1, 1]", "expected demand growth per year, e.g. 0.04 for 4%"),
+    "ceiling": ("[1, inf)", "market saturation as a multiple of today's demand"),
+    "life": ("(0, 100]", "asset life in years"),
+    "window": ("[0, inf)", "years during which decisions can be taken"),
+    "margin": ("[0, inf)", "$M per thousand units"),
+    "op_cost": ("[0, inf)", "$M per thousand units of capacity per year"),
+    "penalty": ("[0, inf)", "$M per thousand units of lost sales"),
+    "out_margin": ("[0, inf)", "3PL margin, $M per thousand units"),
+    "out_cap": ("[0, inf)", "3PL limit as a multiple of today's demand"),
+    "wacc": ("[0, 1)", "discount rate per year, e.g. 0.10"),
+    "risk_free": ("(-1, 1)", "risk-free rate per year"),
+    "risk_price": ("(-inf, inf)", "market price of demand risk (lambda)"),
+    "small_factor": ("(0, inf)", "staged initial footprint as a multiple of today's demand"),
+    "big_factor": ("(0, inf)", "full footprint as a multiple of today's demand"),
+    "step_factor": ("(0, inf)", "expansion step as a multiple of today's demand"),
+    "premium": ("[0, inf)", "premium on an expansion's variable cost, e.g. 0.25 for 25%"),
+    "escalation": ("(-1, 1)", "yearly escalation of a deferred build's cost"),
+    "fixed_cost": ("[0, inf)", "fixed cost of a site, $M"),
+    "var_cost": ("[0, inf)", "$M per thousand units of capacity"),
+    "build_lead": ("[0, inf)", "years from deciding to build until capacity arrives"),
+    "expand_lead": ("[0, inf)", "years from deciding to expand until the step arrives"),
+    "salvage_factor": ("[0, 1]", "resale value of a new site as a share of its cost"),
+    "rent": ("[0, inf)", "$M per thousand units of leased capacity per year"),
+    "lease_lead": ("[0, inf)", "fit-out time in years"),
+    "lease_fit": ("[0, inf)", "fit-out cost as a multiple of the fixed cost"),
+    "min_term": ("[0, inf)", "years until the first break date"),
+    "break_every": ("[0, inf)", "years between break dates; 0 for a single break"),
+    "break_fee": ("[0, inf)", "break fee in years of rent"),
+    "mothball_factor": ("[0, 1]", "share of the holding cost paid while idle"),
+    "mothball_cost": ("[0, inf)", "one-off cost to mothball, $M"),
+    "reactivate_cost": ("[0, inf)", "one-off cost to reactivate, $M"),
+}
 
 
 @dataclass
@@ -138,6 +190,16 @@ def lattice(p: SiteParams) -> Lattice:
     return Lattice(dt=dt, u=u, d=d, p=pu, growth=g, rate=r, disc=math.exp(-r * dt), n=n, w=min(n, js_round(p.window / dt)),
                    build_steps=js_round(p.build_lead / dt), expand_steps=js_round(p.expand_lead / dt), warnings=warnings,
                    valid=0 < pu < 1)
+
+
+def _valid_lattice(p: SiteParams) -> Lattice:
+    """The lattice, or a ValueError when its up-probability falls outside (0, 1) and no value would mean anything."""
+    L = lattice(p)
+    if not L.valid:
+        g = "growth net of the risk price (growth - risk_price*sigma)" if p.basis == "rn" else "growth"
+        raise ValueError(f"The lattice cannot represent a {g} of {L.growth:.3f}/yr with a volatility of {p.sigma:.3f}/yr "
+                         f"(up-probability {L.p:.3f}). Raise sigma or bring the growth closer to zero.")
+    return L
 
 
 # ---- the economics, vectorised over a lattice row (D may be an array)
@@ -338,7 +400,7 @@ def _refine(best_k: float, d0: float):
 class Fixed:
     npv: float
     capacity: float
-    no_exit: Optional[float] = None       # the same design without the right to sell
+    no_exit: Optional[float] = None       # the same design with no exits: neither sell nor mothball
     no_mothball: Optional[float] = None   # the same design without the right to mothball
 
 
@@ -382,8 +444,18 @@ class SiteSolution:
         return {"full": self.full.npv, "best": self.best.npv, "defer": self.defer, "stage": self.stage, "lease": self.lease.npv}
 
     def option_values(self) -> Dict[str, float]:
-        """What each kind of flexibility is worth, $M: each flexible strategy against the best fixed design (a fair
-        benchmark, not the full footprint), and the exits against the same design or lease without them."""
+        """What each kind of flexibility is worth, $M. Each is measured against its own baseline, so they do not add up:
+
+        * ``wait``, ``stage``, ``lease``: that strategy less the best fixed design built now (a fair benchmark, not the
+          full footprint). ``wait`` defers the *full* footprint, so it can be negative when the full footprint is too
+          big; the pure value of timing is ``defer - full.npv``, never negative.
+        * ``break_clauses``: the lease less the same lease without break clauses.
+        * ``sell``: the best fixed design less the same design with no exits at all (neither sell nor mothball), i.e.
+          the value of the exits together.
+        * ``mothball``: the best fixed design less the same design without the right to mothball (selling kept), i.e.
+          what mothballing adds once selling is possible. It is often 0 because selling dominates.
+
+        See docs/guide.md, "Reading the results"."""
         out = {"wait": self.defer - self.best.npv, "stage": self.stage - self.best.npv, "lease": self.lease.npv - self.best.npv,
                "break_clauses": self.lease.npv - self.lease.no_break}
         if self.best.no_exit is not None:
@@ -414,7 +486,7 @@ class SiteSolution:
 def solve(params: Optional[SiteParams] = None, **changes) -> SiteSolution:
     """Value every strategy for a site. ``solve()`` uses the defaults; ``solve(sigma=0.4)`` changes some inputs."""
     p = (params or SiteParams()).with_(**changes) if changes else (params or SiteParams())
-    L = lattice(p)
+    L = _valid_lattice(p)
     N, W, lv = L.n, L.w, levels_of(p)
     Kbig = lv[-1]
     rows = [demand_row(p, L, t) for t in range(N + 1)]
@@ -569,7 +641,7 @@ def solve(params: Optional[SiteParams] = None, **changes) -> SiteSolution:
 def fixed_npv(params: Optional[SiteParams] = None, capacity: float = 500.0, **changes) -> float:
     """NPV of building ``capacity`` now and keeping it (with the exits the inputs allow)."""
     p = (params or SiteParams()).with_(**changes) if changes else (params or SiteParams())
-    L = lattice(p)
+    L = _valid_lattice(p)
     rows = [demand_row(p, L, t) for t in range(L.n + 1)]
     R0 = operate(p, L, 0.0, rows=rows)
     RK = operate(p, L, capacity, R0, rows=rows)
@@ -580,7 +652,7 @@ def fixed_npv(params: Optional[SiteParams] = None, capacity: float = 500.0, **ch
 def lease_npv(params: Optional[SiteParams] = None, capacity: float = 500.0, with_breaks: bool = True, **changes) -> float:
     """NPV of leasing ``capacity`` now, with or without its break clauses."""
     p = (params or SiteParams()).with_(**changes) if changes else (params or SiteParams())
-    L = lattice(p)
+    L = _valid_lattice(p)
     rows = [demand_row(p, L, t) for t in range(L.n + 1)]
     R0 = operate(p, L, 0.0, rows=rows)
     Ll = min(L.n, js_round(p.lease_lead / L.dt))
