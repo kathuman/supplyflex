@@ -1,8 +1,8 @@
 # User guide
 
-How to go from data to a decision with `supplyflex`, how to read what it returns, and what the models leave out. For
-every input see the [parameter reference](parameters.md); for a complete case with numbers see the
-[worked example](worked-example.md).
+How to go from data to a decision with `supplyflex`, how to read what it returns, and what the models leave out. New
+here? Start with [getting started](getting-started.md): what to bring and an input template. For every input see the
+[parameter reference](parameters.md); for a complete case with numbers see the [worked example](worked-example.md).
 
 - [A workflow](#a-workflow)
 - [Reading the results](#reading-the-results)

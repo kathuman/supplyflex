@@ -71,6 +71,9 @@ Inputs are checked when they are set: anything out of range raises one `ValueErr
 
 ## Documentation
 
+- [Getting started](https://github.com/kathuman/supplyflex/blob/main/docs/getting-started.md): the questions it answers, the data and figures to bring (and in
+  what format), and the workflow from history to decision, with an [input template](https://github.com/kathuman/supplyflex/blob/main/examples/inputs_template.py)
+  in everyday units.
 - [Worked example](https://github.com/kathuman/supplyflex/blob/main/docs/worked-example.md): a regional distribution centre, from five years of monthly shipments to a
   recommendation, a decision rule to monitor and the inputs it depends on
   ([script](https://github.com/kathuman/supplyflex/blob/main/examples/regional_dc.py)).
